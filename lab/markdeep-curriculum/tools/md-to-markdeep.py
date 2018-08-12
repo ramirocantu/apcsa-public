@@ -51,6 +51,8 @@ def printFooter():
 
 #-----------------------------------------------------------------------------------------------------------------------
 
+linkDefPattern = re.compile(r'\[[^\]]+\]: ')
+
 def getLinkDefinitions(lines):
     # Scan through all lines and find link definitions (usually at the bottom of the page). Store these as regular
     # expressions to match later.
@@ -69,7 +71,9 @@ def getLinkDefinitions(lines):
 
 #-----------------------------------------------------------------------------------------------------------------------
 
-literalBracketPattern = re.compile(r'\\\[[^\]]+\\\]')
+literalBracketPattern = re.compile(r'\\\[[^\]]+\\\]')    # Match "\[thing\]"
+mdLinkImmediate = re.compile(r'\.md[\)\]]')              # Match ".md" in "[foo](bar.md)" or "[foo.md]"
+mdLinkDefined = re.compile(r'\[[^\]]+\]: .*\.md$')       # Match ".md" in "[foo]: bar/baz/qux.md"
 
 def processLine (line, linkPatterns):
     line = line.rstrip()
@@ -94,11 +98,22 @@ def processLine (line, linkPatterns):
 
     # In Markdeep, if you have text in square brackets not followed by parentheses or square brackets, then it's not
     # considered to be a link, therefore you should not escape it.
-
     while True:
         match = literalBracketPattern.search(line)
         if match == None: break
         line = line[:match.start()] + '[' + line[match.start()+2 : match.end()-2] + ']' + line[match.end():]
+
+    # Look for immediate links to .md files, and convert those to .md.html. Also for links with a name
+    # that ends in ".md".
+    while True:
+        match = mdLinkImmediate.search(line)
+        if match == None: break
+        line = line[:match.start()+3] + '.html' + line[match.end()-1:]
+
+    # Look for defined links to .md files, and convert those to .md.html.
+    match = mdLinkDefined.fullmatch(line)
+    if match != None:
+        line = line + '.html'
 
     print (line)
 
